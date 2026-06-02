@@ -14,3 +14,4 @@ venv/
 # Project
 outputs/
 .DS_Store
+knowledge.md

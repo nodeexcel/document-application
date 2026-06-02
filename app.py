@@ -1,10 +1,10 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
-# from services.ai_generator import generate_all_content
-# from services.file_manager import save_outputs, get_output_folder
-# from services.pdf_generator import generate_pdf
-# from services.zip_manager import create_zip
+from services.ai_generator import generate_all_content
+from services.file_manager import save_outputs, get_output_folder
+from services.pdf_generator import generate_pdf
+from services.zip_manager import create_zip
 
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
