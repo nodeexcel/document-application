@@ -6,6 +6,8 @@ import os
 import re
 from datetime import datetime
 
+from prompts.script_prompts import SCRIPT_MIN_WORDS, SCRIPT_MAX_WORDS
+
 
 def safe_filename(name: str) -> str:
     """Convert a string to a safe folder/file name."""
@@ -23,11 +25,10 @@ def get_output_folder(title: str) -> str:
 
 
 def create_folder_structure(base_path: str) -> dict:
-    """Create the 4-subfolder structure and return paths."""
+    """Create the subfolder structure and return paths."""
     folders = {
-        "scripts": os.path.join(base_path, "Scripts"),
-        "broll": os.path.join(base_path, "Broll_Prompts"),
-        "talking_head": os.path.join(base_path, "Talking_Head"),
+        "motion_prompts": os.path.join(base_path, "HeyGen_Motion_Prompts"),
+        "avatar_video": os.path.join(base_path, "Avatar_Video"),
         "images": os.path.join(base_path, "Images"),
     }
     for path in folders.values():
@@ -50,39 +51,26 @@ def save_outputs(results: dict, product_data: dict) -> str:
     output_folder = get_output_folder(product_data["title"])
     folders = create_folder_structure(output_folder)
 
-    scripts = results.get("scripts", {})
-    broll = results.get("broll", {})
+    motion_prompts = results.get("motion_prompts", {})
     extras = results.get("extras", {})
 
-    # ── Scripts ───────────────────────────────────────────────────────────────
-    script_filenames = {
-        "problem_promise": "01_Problem_Promise_Script.txt",
-        "three_mistakes": "02_Three_Mistakes_Script.txt",
-        "before_after": "03_Before_After_Script.txt",
-        "myth_truth": "04_Myth_vs_Truth_Script.txt",
-        "fast_tip": "05_Fast_Tip_Sell_Script.txt",
+    # Scripts are intentionally NOT written to disk — they feed HeyGen video generation.
+
+    topic_filenames = {
+        "problem_promise": "01_Problem_Promise.txt",
+        "three_mistakes": "02_Three_Mistakes.txt",
+        "before_after": "03_Before_After.txt",
+        "myth_truth": "04_Myth_Truth.txt",
+        "fast_tip": "05_Fast_Tip.txt",
     }
 
-    for key, filename in script_filenames.items():
-        if key in scripts:
-            write_file(folders["scripts"], filename, scripts[key])
+    for key, filename in topic_filenames.items():
+        if key in motion_prompts:
+            write_file(folders["motion_prompts"], filename, motion_prompts[key])
 
-    # ── B-Roll Prompts ────────────────────────────────────────────────────────
-    broll_filenames = {
-        "broll_problem_promise": "01_Broll_Problem_Promise.txt",
-        "broll_three_mistakes": "02_Broll_Three_Mistakes.txt",
-        "broll_before_after": "03_Broll_Before_After.txt",
-        "broll_myth_truth": "04_Broll_Myth_Truth.txt",
-        "broll_fast_tip": "05_Broll_Fast_Tip.txt",
-    }
-
-    for key, filename in broll_filenames.items():
-        if key in broll:
-            write_file(folders["broll"], filename, broll[key])
-
-    # ── Talking Head Guide ────────────────────────────────────────────────────
-    if "talking_head" in extras:
-        write_file(folders["talking_head"], "HeyGen_Talking_Head_Guide.txt", extras["talking_head"])
+    # ── Avatar Video Guide ────────────────────────────────────────────────────
+    if "avatar_guide" in extras:
+        write_file(folders["avatar_video"], "Avatar_Video_Guide.txt", extras["avatar_guide"])
 
     # ── Image Style Guide ─────────────────────────────────────────────────────
     if "image_guide" in extras:
@@ -100,43 +88,43 @@ def save_outputs(results: dict, product_data: dict) -> str:
 
 
 def build_chatgpt_template(data: dict) -> str:
-    return f"""REUSABLE CHATGPT PROMPT TEMPLATE
-For: {data['title']}
-==============================================
+    """Ready-to-copy ChatGPT prompt for generating more scripts outside this app."""
+    return f"""You are an expert short-form video scriptwriter for digital product creators.
 
-Copy and paste this into ChatGPT anytime you need more scripts.
+Generate ALL 5 of the following video scripts for my digital product. Use the exact same format for each script.
 
-─── PROMPT ────────────────────────────────────
+PRODUCT DETAILS (fill in or edit as needed):
+- Product title: {data['title']}
+- Product description: {data['description']}
+- Target audience: {data['audience']}
+- Audience pain points: {data['pain_points']}
+- Before → After transformation: {data['before_after']}
+- 3 tips / wins inside my product: {data['tips']}
+- 3 mistakes my audience makes: {data['mistakes']}
+- Call to action phrase: {data['cta']}
+- Website / link: {data['link'] or '[YOUR LINK HERE]'}
 
-You are a short-form video scriptwriter for digital product creators.
+GENERATE THESE 5 SCRIPT TYPES (one script per type):
+1. Problem → Promise
+2. 3 Mistakes
+3. Before → After
+4. Myth vs Truth
+5. Fast Tip → Sell
 
-Write a [SCRIPT TYPE] video script for my digital product.
+FORMAT RULES (apply to every script):
+- Plain text ONLY. No markdown, no asterisks, no bold, no italics, no emojis.
+- {SCRIPT_MIN_WORDS}–{SCRIPT_MAX_WORDS} words of spoken dialogue per script (complete scripts, no truncation).
+- Every script must end by speaking the exact CTA phrase and website link word for word.
+- Use these section labels with a delivery cue in square brackets after each label.
+  Example: HOOK: [pause 1 sec] Your opening line here...
+- Delivery cues are stage directions only — not spoken aloud.
+- At the top of each script add: "Note: Text in [brackets] are delivery cues — do not read these aloud."
+- Problem → Promise must use a product-specific PIVOT (not generic "what if there was a way").
+- Problem → Promise must merge PROMISE + PROOF TEASE into one punchy line using the actual tips above.
+- 3 Mistakes must use the three mistakes listed above.
+- Myth vs Truth and Fast Tip → Sell must reference the actual tips listed above.
 
-Product: {data['title']}
-Description: {data['description']}
-Target audience: {data['audience']}
-Their pain points: {data['pain_points']}
-3 tips inside my product: {data['tips']}
-3 mistakes my audience makes: {data['mistakes']}
-Transformation: {data['before_after']}
-Call to action: {data['cta']}
-Link: {data['link']}
-
-Script types you can use:
-- Problem → Promise
-- 3 Mistakes  
-- Before → After
-- Myth vs Truth
-- Fast Tip → Sell
-- Day in the Life
-- Story Time
-- Hot Take
-
-Make it 45–90 seconds when spoken. Strong hook, clear value, direct CTA.
-Sound human, relatable, and confident. No corporate language.
-
-─── END PROMPT ────────────────────────────────
-"""
+Write each script to sound human, relatable, and confident. No corporate language."""
 
 
 def build_folder_readme(data: dict) -> str:
@@ -146,16 +134,11 @@ Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
 
 FOLDER CONTENTS:
 
-📁 Scripts/
-   - 5 complete video scripts (Problem→Promise, 3 Mistakes, Before→After, Myth vs Truth, Fast Tip→Sell)
-   - Ready to paste into HeyGen or record yourself
+📁 HeyGen_Motion_Prompts/
+   - 5 custom motion prompts (auto-applied per video)
 
-📁 Broll_Prompts/
-   - 5 sets of cinematic B-roll prompts (5–6 scenes each)
-   - Optimized for Kling 2.6, Runway, and Veo
-
-📁 Talking_Head/
-   - Step-by-step HeyGen guide
+📁 Avatar_Video/
+   - HeyGen talking-head workflow guide
    - Settings for Reels/TikTok/Shorts format
 
 📁 Images/

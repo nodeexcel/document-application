@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+.env.example
+outputs/
+knowledge.md
+README.md
+.omc/
+.DS_Store

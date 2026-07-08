@@ -1,3 +1,4 @@
+import re
 import time
 from openai import OpenAI
 from prompts.script_prompts import (
@@ -7,18 +8,25 @@ from prompts.script_prompts import (
     before_after_prompt,
     myth_truth_prompt,
     fast_tip_prompt,
+    SCRIPT_MIN_WORDS,
+    SCRIPT_MAX_WORDS,
+    WORDS_PER_SECOND,
 )
-from prompts.broll_prompts import (
-    get_broll_system_prompt,
-    broll_for_problem_promise,
-    broll_for_three_mistakes,
-    broll_for_before_after,
-    broll_for_myth_truth,
-    broll_for_fast_tip,
+from services.file_manager import build_chatgpt_template
+from prompts.heygen_motion_prompts import (
+    get_heygen_motion_system_prompt,
+    heygen_motion_prompt_user,
 )
 
 
-def call_openai(client: OpenAI, system: str, user: str, model: str, retries: int = 2) -> str:
+def call_openai(
+    client: OpenAI,
+    system: str,
+    user: str,
+    model: str,
+    max_tokens: int = 400,
+    retries: int = 2,
+) -> str:
     """Make a single OpenAI API call with retry logic."""
     for attempt in range(retries + 1):
         try:
@@ -29,7 +37,7 @@ def call_openai(client: OpenAI, system: str, user: str, model: str, retries: int
                     {"role": "user", "content": user},
                 ],
                 temperature=0.85,
-                max_tokens=1200,
+                max_tokens=max_tokens,
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
@@ -39,38 +47,186 @@ def call_openai(client: OpenAI, system: str, user: str, model: str, retries: int
                 raise RuntimeError(f"OpenAI API call failed after {retries + 1} attempts: {e}") from e
 
 
+def _parse_tips_mistakes(raw: str) -> tuple:
+    """Parse the LLM TIPS/MISTAKES response into two newline-joined strings."""
+    tips_lines, mistakes_lines = [], []
+    section = None
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        upper = stripped.upper()
+        if upper.startswith("TIPS"):
+            section = "tips"
+            continue
+        if upper.startswith("MISTAKES"):
+            section = "mistakes"
+            continue
+        if section == "tips":
+            tips_lines.append(stripped)
+        elif section == "mistakes":
+            mistakes_lines.append(stripped)
+    return "\n".join(tips_lines), "\n".join(mistakes_lines)
+
+
+def generate_tips_and_mistakes(client: OpenAI, data: dict, model: str) -> tuple:
+    """
+    Auto-generate 3 quick tips/wins and 3 common audience mistakes from the
+    existing product inputs, before the scripts are generated.
+    Returns (tips, mistakes) as newline-separated strings.
+    """
+    system = (
+        "You are a digital product marketing strategist. From the product details "
+        "provided, infer the most valuable quick tips/wins likely found inside the "
+        "product, and the most common mistakes the target audience makes. "
+        "Be specific and concrete — grounded in the product description, audience, "
+        "pain points, and transformation. Never write generic filler."
+    )
+    user = f"""Based on this digital product, generate:
+- 3 quick tips / wins that are likely inside the product
+- 3 common mistakes the target audience makes
+
+Product Title: {data['title']}
+Description: {data['description']}
+Audience: {data['audience']}
+Pain Points: {data['pain_points']}
+Before/After Transformation: {data['before_after']}
+
+Return ONLY in this exact format, with no extra commentary:
+TIPS:
+1. <tip>
+2. <tip>
+3. <tip>
+MISTAKES:
+1. <mistake>
+2. <mistake>
+3. <mistake>
+"""
+    raw = call_openai(client, system, user, model)
+    return _parse_tips_mistakes(raw)
+
+
+def _count_spoken_words(text: str) -> int:
+    """Approximate spoken word count (labels and bracket cues excluded)."""
+    words = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("Word count:", "Note:")):
+            continue
+        spoken = re.sub(r"^[A-Z][A-Z0-9\s→/&+\-]*:\s*", "", stripped)
+        spoken = re.sub(r"\[[^\]]*\]", "", spoken)
+        words += len(spoken.split())
+    return words
+
+
+def _strip_script_metadata(raw: str) -> str:
+    lines = []
+    for line in raw.strip().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Word count:") or stripped.startswith("Note:"):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def _cta_present(body: str, phrase: str) -> bool:
+    if not phrase:
+        return True
+    return phrase.lower() in body.lower()
+
+
+def _link_present(body: str, link: str) -> bool:
+    if not link:
+        return True
+    normalized = link.lower().replace("https://", "").replace("http://", "").replace("www.", "")
+    body_lower = body.lower()
+    return link.lower() in body_lower or normalized in body_lower
+
+
+def ensure_cta_and_link(body: str, data: dict) -> str:
+    """Append CTA phrase and link if the model omitted them — never removes content."""
+    cta = (data.get("cta") or "").strip()
+    link = (data.get("link") or "").strip()
+    body = body.strip()
+
+    if cta and not _cta_present(body, cta):
+        body = f"{body}\nCTA: [direct] {cta}"
+
+    if link and not _link_present(body, link):
+        lines = body.splitlines()
+        for idx in range(len(lines) - 1, -1, -1):
+            if lines[idx].strip().upper().startswith("CTA:"):
+                lines[idx] = f"{lines[idx].rstrip()} {link}"
+                return "\n".join(lines)
+        closing = f"CTA: [direct] {cta}. {link}" if cta else f"CTA: [direct] {link}"
+        body = f"{body}\n{closing}"
+
+    return body
+
+
+def finalize_script(raw: str, data: dict | None = None) -> str:
+    """Strip metadata, ensure CTA/link ending, prepend word-count note."""
+    body = _strip_script_metadata(raw)
+    if data:
+        body = ensure_cta_and_link(body, data)
+
+    word_count = _count_spoken_words(body)
+    read_secs = max(1, round(word_count / WORDS_PER_SECOND))
+    meta = f"Word count: {word_count} words | Estimated read time: ~{read_secs} seconds"
+    note = "Note: Text in [brackets] are delivery cues — do not read these aloud."
+    return f"{meta}\n{note}\n\n{body}"
+
+
+def generate_script(
+    client: OpenAI,
+    sys_script: str,
+    prompt_fn,
+    data: dict,
+    model: str,
+) -> str:
+    """Generate one script; retry once with a shorter rewrite if over the word limit."""
+    user_prompt = prompt_fn(data)
+    raw = call_openai(client, sys_script, user_prompt, model, max_tokens=550)
+    body = ensure_cta_and_link(_strip_script_metadata(raw), data)
+
+    if _count_spoken_words(body) > SCRIPT_MAX_WORDS:
+        shorter_prompt = (
+            f"{user_prompt}\n\n"
+            f"REWRITE SHORTER: Your previous draft was too long ({_count_spoken_words(body)} words). "
+            f"Rewrite the entire script in {SCRIPT_MIN_WORDS}–{SCRIPT_MAX_WORDS} words. "
+            f"Keep the full mandatory CTA ending (exact CTA phrase and link). "
+            f"Trim the middle sections — never cut off the ending."
+        )
+        raw = call_openai(client, sys_script, shorter_prompt, model, max_tokens=550)
+        body = ensure_cta_and_link(_strip_script_metadata(raw), data)
+
+    return finalize_script(body, data=None)
+
+
 def generate_talking_head_guide(data: dict) -> str:
-    """Static talking head HeyGen guide — personalised with product data."""
+    """Static HeyGen avatar guide — personalised with product data."""
     return f"""TALKING HEAD GUIDE — {data['title']}
 Generated for: {data['audience']}
 ==============================================
 
-HOW TO USE HEYGEN FOR YOUR TALKING HEAD VIDEOS
+HOW YOUR AVATAR VIDEOS ARE MADE (HEYGEN AVATAR IV)
 
-STEP 1 — PREPARE YOUR AVATAR
-- Upload a close-up headshot (good lighting, neutral background)
-- Or use HeyGen's built-in avatars as a starting point
-- Choose an avatar that matches your brand aesthetic
+WHAT HAPPENS AUTOMATICALLY
+- A unique HeyGen photo avatar is selected for each video (no repeats per product).
+- The full script is sent to HeyGen for AI voice + lip-sync — complete, never truncated.
+- Every video ends by speaking your exact CTA phrase and website link.
+- Safe motion is applied per avatar: gestures for normal looks, frozen hands only for holds_prop avatars.
+- Expressiveness is set to HIGH for natural movement (Avatar IV fallback).
+- Output: 9:16 vertical, 720p talking-head MP4.
 
-STEP 2 — SELECT YOUR SCRIPT
-Use any of the 5 generated scripts in the Scripts/ folder.
-Paste the script text directly into HeyGen's script box.
+STEP 1 — REVIEW YOUR VIDEOS
+- Download each MP4 from the Videos or Downloads tab.
+- Check lip-sync and gestures; regenerate in HeyGen dashboard if needed.
 
-STEP 3 — VOICE SETTINGS
-- Use your cloned voice (if available) for authenticity
-- Or choose a natural-sounding voice (avoid robotic presets)
-- Speaking pace: Medium (not too fast for short-form)
-
-STEP 4 — VIDEO SETTINGS FOR REELS/TIKTOK/SHORTS
+STEP 2 — EDIT FOR REELS/TIKTOK/SHORTS
 - Aspect ratio: 9:16 (vertical)
-- Resolution: 1080 x 1920
-- Duration: Keep under 90 seconds per script
-
-STEP 5 — EXPORT & EDIT
-- Export from HeyGen as MP4
-- Import into CapCut or Premiere for captions
-- Add auto-captions (80% of viewers watch without sound)
-- Add background music at 10–15% volume
+- Add auto-captions (most viewers watch without sound).
+- Add background music at 10–15% volume.
 
 RECOMMENDED CAPTION STYLE:
 - Bold white text, black stroke
@@ -82,9 +238,7 @@ PRODUCT DETAILS FOR OVERLAY:
 - CTA: {data['cta']}
 - Link: {data['link']}
 
-TIP: Record a quick intro at the start of each video saying 
-"I made this so you don't have to go through what I did..."
-This personalises the AI avatar content.
+TIP: Keep energy high and message clear — each clip is a complete 20–30 second story.
 """
 
 
@@ -116,13 +270,13 @@ Audience: {data['audience']}
 14. Close-up of a phone showing a Stripe/sales notification — social proof
 15. Candid laugh while working — joy in the process
 
-─── HIGGSFIELD AI WORKFLOW ──────────────────
+─── ANIMATING STATIC IMAGES ─────────────────
 
-Use Higgsfield to animate static images:
-1. Upload your flat lay or workspace image
-2. Prompt: "Subtle parallax movement, soft bokeh, cinematic"
+To animate a flat lay or workspace image:
+1. Upload your flat lay or workspace image to an image-to-video tool
+2. Prompt: "Subtle parallax movement, soft natural light"
 3. Duration: 3–5 seconds
-4. Use as B-roll filler or Instagram Reels background
+4. Use as a background overlay behind your avatar video
 
 ─── COLOR PALETTE SUGGESTIONS ──────────────
 
@@ -150,14 +304,29 @@ Link: {data['link']}
 """
 
 
+# Topic key -> human label for motion prompts.
+TOPIC_LABELS = [
+    ("problem_promise", "Problem to Promise"),
+    ("three_mistakes", "3 Mistakes"),
+    ("before_after", "Before to After"),
+    ("myth_truth", "Myth vs Truth"),
+    ("fast_tip", "Fast Tip to Sell"),
+]
+
+
 def generate_all_content(data: dict, api_key: str, model: str = "gpt-4o-mini") -> dict:
     """
-    Master generation function. Calls OpenAI for all 5 scripts + 5 B-roll sets.
-    Returns a structured dict with all generated content.
+    Master generation function. Calls OpenAI for 5 scripts and 5 HeyGen motion prompts
+    (one unique set per topic). Returns a structured dict with all generated content.
     """
     client = OpenAI(api_key=api_key)
     sys_script = get_system_prompt()
-    sys_broll = get_broll_system_prompt()
+    sys_motion = get_heygen_motion_system_prompt()
+
+    # ── Auto-generate Tips & Mistakes  ───────
+    tips, mistakes = generate_tips_and_mistakes(client, data, model)
+    data["tips"] = tips
+    data["mistakes"] = mistakes
 
     # ── Generate 5 Scripts ────────────────────────────────────────────────────
     scripts = {}
@@ -170,25 +339,24 @@ def generate_all_content(data: dict, api_key: str, model: str = "gpt-4o-mini") -
     ]
 
     for key, prompt_fn in script_configs:
-        scripts[key] = call_openai(client, sys_script, prompt_fn(data), model)
+        scripts[key] = generate_script(client, sys_script, prompt_fn, data, model)
 
-    # ── Generate B-Roll Prompts ───────────────────────────────────────────────
-    broll = {}
-    broll_configs = [
-        ("broll_problem_promise", broll_for_problem_promise, scripts["problem_promise"]),
-        ("broll_three_mistakes", broll_for_three_mistakes, scripts["three_mistakes"]),
-        ("broll_before_after", broll_for_before_after, scripts["before_after"]),
-        ("broll_myth_truth", broll_for_myth_truth, scripts["myth_truth"]),
-        ("broll_fast_tip", broll_for_fast_tip, scripts["fast_tip"]),
-    ]
-
-    for key, prompt_fn, script_text in broll_configs:
-        broll[key] = call_openai(client, sys_broll, prompt_fn(data, script_text), model)
+    # ── HeyGen motion prompts (sent to API with each video) ───────────────────
+    motion_prompts = {}
+    for key, label in TOPIC_LABELS:
+        user_prompt = heygen_motion_prompt_user(label, data, scripts[key])
+        raw = call_openai(client, sys_motion, user_prompt, model, max_tokens=180)
+        motion_prompts[key] = raw.strip().strip('"')
 
     # ── Generate Extras (Static + Personalised) ───────────────────────────────
     extras = {
-        "talking_head": generate_talking_head_guide(data),
+        "avatar_guide": generate_talking_head_guide(data),
         "image_guide": generate_image_guide(data),
+        "chatgpt_template": build_chatgpt_template(data),
     }
 
-    return {"scripts": scripts, "broll": broll, "extras": extras}
+    return {
+        "scripts": scripts,
+        "motion_prompts": motion_prompts,
+        "extras": extras,
+    }

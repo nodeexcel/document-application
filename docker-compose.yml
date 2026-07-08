@@ -1,0 +1,12 @@
+services:
+  content-creator:
+    build: .
+    image: content-creator-automation:latest
+    container_name: content-creator
+    ports:
+      - "20157:20157"
+    env_file:
+      - .env
+    volumes:
+      - ./outputs:/app/outputs
+    restart: unless-stopped

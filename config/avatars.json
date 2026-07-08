@@ -1,0 +1,27 @@
+{
+  "avatars": [
+    {"id": "7e91633a7eb14bf6b2037134ad369828", "label": "Navy blazer — office smile", "outfit": "navy blazer, white shirt", "pose": "seated, front-facing, warm smile", "enabled": true},
+    {"id": "633ef2b2dc1e4104a8ac0350dfb52f09", "label": "Balck blazer - office smile", "outfit": "black blazer, white shirt", "pose": "seated, front-facing, warm smile", "enabled": true},
+    {"id": "d8edefcb177c41e6bd8bc81ea323b252", "label": "blue blazer - Home", "outfit": "blue blalzer, white shirt", "pose": "standing, front-facing, warm smile", "enabled": true},
+    {"id": "d8895fb1d42d49bd9b50f2d01f6bf056", "label": "White shirt - Museum", "outfit": "white shirt formal", "pose": "stading, front-facing, warm smile", "enabled": true},
+    {"id": "4c6809486adb49ccb88043ac491080b9", "label": "Grey suit - library", "outfit": "grey suit, white shirt", "pose": "standing, front-facing, warm smile", "enabled": true},
+    {"id": "190bd3c2203a4d6a914e45a7cde991c0", "label": "blue blazer - Office", "outfit": "blue blazer, white shirt", "pose": "seated, front-facing, smiling", "enabled": true},
+    {"id": "c7fc7adf12ee4ed6954a3873beb3df7e", "label": "blue blazer - Office", "outfit": "navy blazer, white shirt", "pose": "seated, front-facing, warm smile", "enabled": true},
+    {"id": "a9933c7cdf28455885ca1daf8236a60b", "label": "Grey blazer - Home", "outfit": "grey suit, white shirt", "pose": "seated, front-facing, smiling", "enabled": true},
+    {"id": "1d9c7693e13f4187aebc8fafdc2a876f", "label": "blue suit - Office", "outfit": "blue suit, white shirt", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "c122fa97daa64de687e82b21e5622a39", "label": "Olive suit - lawn", "outfit": "Olive suit, white shirt", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "06dc7ecd8a5a4f7fa9d12173895d538c", "label": "Grey suit - Home", "outfit": "grey suit, white shirt", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "e5afc75508e449629fe8f3fb6dd4c417", "label": "blue blazer - Home", "outfit": "blue blazer, white shirt", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "9003e9a4d83c433db12d41793dcbb75a", "label": "White tshirt, Home", "outfit": "White tshirt, jeans", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "f37ef633332f407a926142f22b8dae7e", "label": "Navy blazer - Office", "outfit": "navy blazer, white shirt", "pose": "seated, front-facing, smiling", "enabled": true},
+    {"id": "54e7581050b04f3f9bb22949c6ce735b", "label": "white tshirt - Home", "outfit": "white tshirt, jeans", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "8d3cd2d375904007a8e3c298e443e3d0", "label": "pink blazer - Home", "outfit": "pink blazer, white shirt", "pose": "seated, front-facing, smiling", "enabled": true},
+    {"id": "a818f3b23b084714bbdc571fe2cf4f31", "label": "Maroon tshirt - Home", "outfit": "maroon tshirt, jeans", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "fb67286e374047a1960f64ad2213008c", "label": "Cream tshirt — holding cup", "outfit": "Cream tshirt, Black jeans", "pose": "seated, holding coffee cup", "holds_prop": true, "enabled": true},
+    {"id": "c9d15e39fca2480d8cdacdea4d290459", "label": "Royal blue - Home", "outfit": "Royal blue dress", "pose": "seated, front-facing, smiling", "enabled": true},
+    {"id": "1b8cbfcc23a84dad91a9595bcae0562f", "label": "Navy blazer - Home", "outfit": "Navy blazer", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "af8c8285bca4416bb67f34dc98e47091", "label": "Beige tshirt — holding cup", "outfit": "beige tshirt", "pose": "seated, holding coffee cup", "holds_prop": true, "enabled": true},
+    {"id": "71e4c230f16a49a0a11779ae828c6554", "label": "blue dress - Home", "outfit": "blue dress, white inner", "pose": "standing, front-facing, smiling", "enabled": true},
+    {"id": "1f027112ebcf466ba5ff43a058f459ed", "label": "maroon dress - Home", "outfit": "maroon dress", "pose": "standing, front-facing, smiling", "enabled": true}
+  ]
+}

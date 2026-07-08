@@ -1,0 +1,21 @@
+{
+  "avatars": [
+    {
+      "id": "your-avatar-look-id-here",
+      "label": "Navy blazer — office smile",
+      "outfit": "navy blazer, white shirt",
+      "pose": "seated, front-facing, warm smile",
+      "holds_prop": false,
+      "enabled": true
+    },
+    {
+      "id": "your-cup-avatar-look-id-here",
+      "label": "Coffee cup — home",
+      "outfit": "casual top",
+      "pose": "seated, holding coffee cup",
+      "holds_prop": true,
+      "enabled": false,
+      "comment": "Excluded from auto batches. Set enabled:true only if you want it manually; holds_prop freezes hands to prevent glitches."
+    }
+  ]
+}

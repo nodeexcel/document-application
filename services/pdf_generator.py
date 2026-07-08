@@ -127,7 +127,7 @@ def generate_pdf(results: dict, product_data: dict) -> bytes:
     # ── Cover Page ────────────────────────────────────────────────────────────
     story.append(Spacer(1, 0.5 * inch))
     story.append(Paragraph("🎬 Content Creator Automation", styles["title"]))
-    story.append(Paragraph(f"Scripts &amp; B-Roll Prompts for: {product_data['title']}", styles["subtitle"]))
+    story.append(Paragraph(f"Prompts &amp; Guides for: {product_data['title']}", styles["subtitle"]))
     story.append(Paragraph(f"Audience: {product_data['audience']}", styles["meta"]))
     story.append(HRFlowable(width="100%", thickness=1, color=PURPLE, spaceAfter=20))
     story.append(Spacer(1, 0.3 * inch))
@@ -146,46 +146,27 @@ def generate_pdf(results: dict, product_data: dict) -> bytes:
         story.append(Paragraph(safe, styles["body"]))
     story.append(PageBreak())
 
-    # ── Scripts Section ───────────────────────────────────────────────────────
-    scripts = results.get("scripts", {})
-    script_labels = [
-        ("problem_promise", "Script 1: Problem → Promise"),
-        ("three_mistakes", "Script 2: Three Mistakes"),
-        ("before_after", "Script 3: Before → After"),
-        ("myth_truth", "Script 4: Myth vs Truth"),
-        ("fast_tip", "Script 5: Fast Tip → Sell"),
+    # ── Kling Motion Prompts Section ──────────────────────────────────────────
+    motion_prompts = results.get("motion_prompts", {})
+    topic_keys = [
+        ("problem_promise", "Problem → Promise"),
+        ("three_mistakes", "Three Mistakes"),
+        ("before_after", "Before → After"),
+        ("myth_truth", "Myth vs Truth"),
+        ("fast_tip", "Fast Tip → Sell"),
     ]
 
-    story.append(Paragraph("VIDEO SCRIPTS", styles["section"]))
+    story.append(Paragraph("HEYGEN MOTION PROMPTS", styles["section"]))
+    story.append(Paragraph(
+        "Avatar IV custom motion — applied automatically with each talking-head video",
+        styles["subtitle"],
+    ))
     story.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT_PURPLE, spaceAfter=10))
 
-    for key, label in script_labels:
-        if key in scripts:
-            story.append(Paragraph(label, styles["script_title"]))
-            story.extend(text_to_paragraphs(scripts[key], styles["body"]))
-            story.append(Spacer(1, 0.2 * inch))
-            story.append(HRFlowable(width="80%", thickness=0.3, color=LIGHT_GRAY, spaceAfter=10))
-
-    story.append(PageBreak())
-
-    # ── B-Roll Section ────────────────────────────────────────────────────────
-    broll = results.get("broll", {})
-    broll_labels = [
-        ("broll_problem_promise", "B-Roll: Problem → Promise"),
-        ("broll_three_mistakes", "B-Roll: Three Mistakes"),
-        ("broll_before_after", "B-Roll: Before → After"),
-        ("broll_myth_truth", "B-Roll: Myth vs Truth"),
-        ("broll_fast_tip", "B-Roll: Fast Tip → Sell"),
-    ]
-
-    story.append(Paragraph("CINEMATIC B-ROLL PROMPTS", styles["section"]))
-    story.append(Paragraph("Optimized for Kling 2.6 / Runway / Veo", styles["subtitle"]))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT_PURPLE, spaceAfter=10))
-
-    for key, label in broll_labels:
-        if key in broll:
-            story.append(Paragraph(label, styles["script_title"]))
-            story.extend(text_to_paragraphs(broll[key], styles["body"]))
+    for key, label in topic_keys:
+        if key in motion_prompts:
+            story.append(Paragraph(f"Motion: {label}", styles["script_title"]))
+            story.extend(text_to_paragraphs(motion_prompts[key], styles["body"]))
             story.append(Spacer(1, 0.2 * inch))
             story.append(HRFlowable(width="80%", thickness=0.3, color=LIGHT_GRAY, spaceAfter=10))
 
@@ -195,9 +176,9 @@ def generate_pdf(results: dict, product_data: dict) -> bytes:
     extras = results.get("extras", {})
     story.append(Paragraph("GUIDES & REFERENCES", styles["section"]))
 
-    if "talking_head" in extras:
-        story.append(Paragraph("HeyGen Talking Head Guide", styles["script_title"]))
-        story.extend(text_to_paragraphs(extras["talking_head"], styles["body"]))
+    if "avatar_guide" in extras:
+        story.append(Paragraph("Avatar Video Guide", styles["script_title"]))
+        story.extend(text_to_paragraphs(extras["avatar_guide"], styles["body"]))
         story.append(Spacer(1, 0.3 * inch))
 
     if "image_guide" in extras:

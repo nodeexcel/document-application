@@ -1,119 +1,46 @@
 """
-B-roll / cinematic video prompt generation.
-Produces AI video prompts optimized for Kling, Runway, and Veo.
+Kling B-roll prompt generation.
+
+Cinematic supplementary clips for manual use in Kling (image-to-video or text-to-video).
+These are NOT used for HeyGen talking-head generation — paste them into Kling yourself
+to create B-roll that supports each script topic.
 """
 
 
-def get_broll_system_prompt():
+def get_broll_system_prompt() -> str:
     return (
-        "You are a cinematic AI video director specializing in short-form marketing content. "
-        "You write detailed, vivid visual prompts for AI video generators like Kling, Runway, and Veo. "
-        "Your prompts are specific, sensory, and production-quality. "
-        "Each prompt should describe: subject, action, environment, lighting, camera angle, mood, style. "
-        "Always include: 'cinematic', 'realistic', 'shallow depth of field' or 'wide establishing shot' as appropriate. "
-        "Avoid generic descriptions. Be specific about lighting, textures, and emotion."
+        "You are a cinematic B-roll director for short-form social video. "
+        "Write ONE Kling-ready prompt for a supplementary visual clip that supports "
+        "a talking-head video — not the presenter speaking to camera.\n\n"
+        "RULES:\n"
+        "- Describe a single cinematic scene (environment, action, mood, lighting).\n"
+        "- 9:16 vertical, 3–5 seconds feel, smooth natural motion.\n"
+        "- No on-screen text, no logos, no split screen, no talking-head close-up.\n"
+        "- Product/audience themed but visually generic enough to reuse.\n"
+        "- One or two sentences, plain text only — no markdown, labels, or emojis."
     )
 
 
-def broll_for_problem_promise(data: dict, script: str) -> str:
-    return f"""Generate 5 cinematic B-roll video prompts for this Problem → Promise marketing script.
+def broll_prompt_user(topic_label: str, data: dict, script: str) -> str:
+    return f"""Write ONE Kling B-roll prompt for a supplementary clip supporting this topic.
 
+Topic: {topic_label}
 Product: {data['title']}
 Audience: {data['audience']}
+Transformation: {data.get('before_after', '')}
 
-Script context:
-{script[:600]}
+Script context (inspire the visual metaphor, do NOT quote dialogue):
+{script[:400]}
 
-Generate exactly 5 prompts. Label them:
-SCENE 1 (Hook — The Problem):
-SCENE 2 (Agitation — The Struggle):
-SCENE 3 (Pivot — Hope Arrives):
-SCENE 4 (Promise — The Solution):
-SCENE 5 (CTA — Action Moment):
+Examples of good B-roll ideas:
+- Hands typing on laptop with soft morning light, slow push-in
+- Person reviewing notes at a clean desk, calm productive mood
+- Close-up of phone showing progress notification, subtle parallax
+- Walking through bright modern space, confident energy, shallow depth of field
 
-Each prompt should be 2–4 sentences. Reference specific visual details: lighting conditions, camera movements, subject emotions, environment.
+Requirements:
+- One scene only, cinematic and aspirational.
+- Match this topic's emotional arc (problem = tension, promise = relief, etc.).
+- End with: 9:16 vertical, smooth cinematic motion.
 
-Example style: "A tired young woman sitting at a cluttered desk late at night, laptop screen casting a blue glow on her face, surrounded by sticky notes and coffee cups, shallow depth of field, cinematic lighting, 4K realistic, slight slow motion."
-
-Now write the 5 prompts for this specific product and audience."""
-
-
-def broll_for_three_mistakes(data: dict, script: str) -> str:
-    return f"""Generate 5 cinematic B-roll video prompts for this "3 Mistakes" marketing script.
-
-Product: {data['title']}
-Audience: {data['audience']}
-
-Script context:
-{script[:600]}
-
-Label them:
-SCENE 1 (Hook — Pattern Interrupt):
-SCENE 2 (Mistake 1 Visual):
-SCENE 3 (Mistake 2 Visual):
-SCENE 4 (Mistake 3 Visual):
-SCENE 5 (Solution Reveal):
-
-Mistakes context: {data['mistakes']}
-
-Each prompt: 2–4 sentences. Specific lighting, camera, emotion, environment. Cinematic and realistic."""
-
-
-def broll_for_before_after(data: dict, script: str) -> str:
-    return f"""Generate 6 cinematic B-roll video prompts for this Before → After transformation script.
-
-Product: {data['title']}
-Audience: {data['audience']}
-Transformation: {data['before_after']}
-
-Script context:
-{script[:600]}
-
-Label them:
-SCENE 1 (The Before — Struggle):
-SCENE 2 (The Before — Emotional Low):
-SCENE 3 (Turning Point):
-SCENE 4 (The After — First Win):
-SCENE 5 (The After — New Life):
-SCENE 6 (CTA Moment):
-
-Each prompt: 2–4 sentences. Contrasting moods between before/after. Cold/dark lighting for before, warm/bright for after."""
-
-
-def broll_for_myth_truth(data: dict, script: str) -> str:
-    return f"""Generate 5 cinematic B-roll video prompts for this Myth vs Truth marketing script.
-
-Product: {data['title']}
-Audience: {data['audience']}
-
-Script context:
-{script[:600]}
-
-Label them:
-SCENE 1 (Hook — The Reveal):
-SCENE 2 (Myth Being Believed — Wrong Path):
-SCENE 3 (The Truth Emerges):
-SCENE 4 (Lightbulb Moment):
-SCENE 5 (Empowered Action):
-
-Each prompt: 2–4 sentences. Use visual contrast between confusion and clarity. Cinematic, realistic."""
-
-
-def broll_for_fast_tip(data: dict, script: str) -> str:
-    return f"""Generate 5 cinematic B-roll video prompts for this Fast Tip → Sell marketing script.
-
-Product: {data['title']}
-Audience: {data['audience']}
-Tips context: {data['tips']}
-
-Script context:
-{script[:600]}
-
-Label them:
-SCENE 1 (Hook — Attention Grab):
-SCENE 2 (Tip in Action — Demonstration):
-SCENE 3 (Positive Outcome):
-SCENE 4 (Product Tease):
-SCENE 5 (CTA Moment):
-
-Each prompt: 2–4 sentences. Upbeat, energetic visuals. Natural daylight or warm interior lighting. Realistic and cinematic."""
+Return ONLY the B-roll prompt (1–2 sentences)."""
